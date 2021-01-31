@@ -2,6 +2,10 @@ import os
 import sys
 import pickle
 import hashlib
+import shutil
+
+
+TRASHDIR = "trash/"
 
 
 def cachedfunc(savefile):
@@ -117,39 +121,137 @@ def build_dict(l):
   return d
 
 
-def get_src_only(src,dst):
+def get_src_only(src,dst,flatten=False):
+  """
+  Returns the files that are only on one side
+
+  If flatten=True, it is only a list of names
+  else, it is a list of lists, each one consisting of identical files
+  ex: [[f1,f2],[f3]] means that f1 and f2 are identical
+  This func also removes the corresponding files from the dict
+  """
   r = []
   for k in dict(src):
     if k not in dst:
-      r.extend(src[k])
+      if flatten:
+        r.extend(src[k])
+      else:
+        r.append(src[k])
       del src[k]
   return r
 
 
-def get_mv(src_dict, dst_dict):
+def get_identical(src_dict, dst_dict):
+  """
+  List of tuples with 2 lists:
+
+  The identical files on src and dst
+  """
   r = []
   for t,files in dst_dict.items():
     r.append((files,src_dict[t]))
   return r
 
 
+def get_actions(src_dict,dst_dict):
+  """
+  Recap all the actions to be performed to sync the trees
+
+  Empty dirs are not created or removed
+  """
+  # Executed in the following order
+  final_actions = {i:[] for i in ['remote_cp','local_cp','mv','rm']}
+  # remote_cp: (src_file, dst_file)
+  # local_cp: (dst_file, dst_file)
+  # mv: (dst_file, dst_file
+  # rm: dst_file
+  # Removing file groups that were not altered
+  for k,l in dict(src_dict).items():
+    if dst_dict.get(k) == l:
+      del src_dict[k]
+      del dst_dict[k]
+      continue
+    for f in l:
+      if f in dst_dict.get(k,[]):
+        src_dict[k].remove(f)
+        dst_dict[k].remove(f)
+  # Only src
+  to_cp = get_src_only(src_dict,dst_dict)
+  for l in to_cp:
+    final_actions['remote_cp'].append((l[0],l[0])) # Only remote copy one
+    print(f"{l[0]} is only on src, remote copy necessary")
+    for i in l[1:]:
+      print(f"{i} is only on src, but we can use {l[0]} to local copy")
+      final_actions['local_cp'].append((l[0],i)) # And local copy the others
+  # Only dst
+  final_actions['rm'].extend(get_src_only(dst_dict,src_dict,flatten=True))
+  print(f"{final_actions['rm']} are only on dst, to be removed")
+  # Both but need to be moved/copied/deleted
+  local_actions = get_identical(src_dict, dst_dict)
+  for old,new in local_actions:
+    for i,j in zip(old,new):
+      print(f"Locally moving {i} to {j}")
+      final_actions['mv'].append((i,j)) # Easy part, the moves
+    if len(new) > len(old): # More on src, local copies required
+      for i in new[len(old):]:
+        print(f"{old[0]} can be used to local copy {i}")
+        final_actions['local_cp'].append((old[0],i))
+    elif len(new) < len(old): # More on dst, removes required
+      for i in old[len(new):]:
+        final_actions['rm'].append(i)
+        print(f"{i} is removed as it was a duplicate")
+  return final_actions
+
+
+def cp(f1,f2):
+  os.makedirs(os.path.dirname(f2),exist_ok=True)
+  shutil.copy2(f1,f2)
+
+
+def mv(f1,f2):
+  os.makedirs(os.path.dirname(f2),exist_ok=True)
+  shutil.move(f1,f2)
+
+
+def rm(f1):
+  os.remove(f1)
+
+
 if __name__ == "__main__":
   src = os.path.abspath(sys.argv[1])+'/'
   dst = os.path.abspath(sys.argv[2])+'/'
-  assert os.path.exists(src),f"Could not find source: {src}"
-  assert os.path.exists(dst),f"Could not find source: {dst}"
+  assert os.path.isdir(src),f"No such directory: {src}"
+  assert os.path.isdir(dst),f"No such directory: {dst}"
+
   src_list = get_all_files(src)
   dst_list = get_all_files(dst)
   src_list = [(rm_prefix(f,src),*p) for f,*p in src_list]
   dst_list = [(rm_prefix(f,dst),*p) for f,*p in dst_list]
-  #src_dict = {p:rm_prefix(f,src) for f,*p in src_list}
-  #dst_dict = {p:rm_prefix(f,dst) for f,*p in dst_list}
-  for elt in list(src_list):
-    #print(elt[0])
-    if elt in dst_list:
-      src_list.remove(elt)
-      dst_list.remove(elt)
   src_dict,dst_dict = build_dict(src_list),build_dict(dst_list)
-  to_cp = get_src_only(src_dict,dst_dict)
-  to_rm = get_src_only(dst_dict,src_dict)
-  to_mv = get_mv(src_dict, dst_dict)
+
+  actions = get_actions(src_dict,dst_dict)
+  for k in ['remote_cp','local_cp','mv','rm']:
+    print(f"\n=========  {k.upper()}  =========\n")
+    for v in actions[k]:
+      if isinstance(v,tuple):
+        print(v[0],' -> ', v[1])
+      else:
+        print(v)
+  print("\n")
+  if input("Continue?").lower() != 'y':
+    raise KeyboardInterrupt
+  os.makedirs(TRASHDIR,exist_ok=True)
+  for s,d in actions['remote_cp']:
+    print(f"Remote copy from {s} to {d}")
+    cp(os.path.join(src,s),os.path.join(dst,d))
+  for s,d in actions['local_cp']:
+    print(f"Local copy from {s} to {d}")
+    cp(os.path.join(dst,s),os.path.join(dst,d))
+  for s,d in actions['mv']:
+    print(f"Move from {s} to {d}")
+    mv(os.path.join(dst,s),os.path.join(dst,d))
+  for s in actions['rm']:
+    print(f"Remove {s}")
+    #rm(os.path.join(dst,s))
+    os.makedirs(os.path.join(TRASHDIR,os.path.dirname(s)),exist_ok=True)
+    mv(os.path.join(dst,s),os.path.join(TRASHDIR,os.path.dirname(s)))
