@@ -3,6 +3,8 @@ import hashlib
 import pickle
 
 
+PERCENT_HASH = 10
+
 def cachedfunc(savefile):
   """
   Decorator to save the results of a function
@@ -121,10 +123,11 @@ class File:
     self.fullpath = os.path.abspath(path)
     assert os.path.exists(path),path
     self.rel_path = self.path_relative_to(os.path.abspath(root)+'/')
+    self.root = root
 
   @lazyproperty
   def name(self):
-    return os.path.basename(self.path)
+    return os.path.basename(self.rel_path)
 
   @lazyproperty
   def size(self):
@@ -142,8 +145,9 @@ class File:
   def qhash(self):
      return cached_quick_hash_file(self.fullpath)
 
-  def partial_hash(self,percent=10):
-    return cached_partial_hash(self.fullpath,percent)
+  @lazyproperty
+  def partial_hash(self):
+    return cached_partial_hash(self.fullpath,PERCENT_HASH)
 
   def path_relative_to(self,root):
     #return rm_prefix(self.fullpath,os.path.abspath(root)+'/')
