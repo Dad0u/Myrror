@@ -159,8 +159,6 @@ if __name__ == "__main__":
   # Now, all the files in src_list must go to dst
   groups = match(src_list+dst_list,[same_name,same_content])
   # Now let's split each group into a pair (src,dst)
-  #groups = [([f for f in g if f.root == src],[f for f in g if f.root == dst])
-  #    for g in groups]
   src_only,both,dst_only = [],[],[]
   for g in groups:
     sg = [f for f in g if f.root == src]
@@ -173,4 +171,37 @@ if __name__ == "__main__":
       else:
         src_only.append(sg)
     else:
-      dst_only.append(dg)
+      dst_only.extend(dg)
+
+  action = {}
+  action['rm'] = []
+  action['mv'] = []
+  action['local_cp'] = []
+  action['remote_cp'] = []
+
+  for s,d in both:
+    for i in list(s):
+      if i.rel_path in [f.rel_path for f in d] and len(d) > 1:
+        s.remove(i)
+        d.remove([f for f in d if f.rel_path == i.rel_path][0])
+
+  for f in dst_only:
+    action['rm'].append(f.rel_path)
+  for s,d in both:
+    for i,j in zip(s,d):
+      action['mv'].append((j.rel_path,i.rel_path))
+    diff = len(s)-len(d)
+    if diff > 0:
+      for i in s[diff:]:
+        action['local_cp'].append((d[0].rel_path,i.rel_path))
+    elif diff < 0:
+      for i in d[diff:]:
+        action['rm'].append(i.rel_path)
+  for l in src_only:
+    action["remote_cp"].append(l[0].rel_path)
+    for f in l[1:]:
+      action["local_cp"].append((l[0],f))
+
+  # Last part: make all the moves/copies in temp files or separate dir
+  # execute everything, the move then to final name
+  # And finally handle the dirs (remove empty dirs on dst)
