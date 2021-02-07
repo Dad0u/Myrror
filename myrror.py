@@ -1,6 +1,9 @@
 import os
+import shutil
 
 from file import File
+
+TRASHDIR = "TRASH"
 
 
 def get_all_files(d):
@@ -129,6 +132,12 @@ def comp_func(attr):
   return f
 
 
+def temp_name(f):
+  if os.path.exists(f):
+    return os.path.join(os.path.dirname(f),'TMPMYR_'+os.path.basename(f))
+  return f
+
+
 if __name__ == "__main__":
   import sys
   from multiprocessing import Pool
@@ -178,6 +187,7 @@ if __name__ == "__main__":
   action['mv'] = []
   action['local_cp'] = []
   action['remote_cp'] = []
+  action['final_mv'] = []
 
   for s,d in both:
     for i in list(s):
@@ -190,18 +200,69 @@ if __name__ == "__main__":
   for s,d in both:
     for i,j in zip(s,d):
       action['mv'].append((j.rel_path,i.rel_path))
+      #action['mv'].append((j.rel_path,temp_name(i.rel_path)))
+      #if temp_name(i.rel_path) != i.rel_path:
+      #  action['final_mv'].append((temp_name(i.rel_path),i.rel_path))
     diff = len(s)-len(d)
     if diff > 0:
       for i in s[diff:]:
-        action['local_cp'].append((d[0].rel_path,i.rel_path))
+        action['local_cp'].append((d[0].rel_path,temp_name(i.rel_path)))
     elif diff < 0:
       for i in d[diff:]:
         action['rm'].append(i.rel_path)
   for l in src_only:
     action["remote_cp"].append(l[0].rel_path)
     for f in l[1:]:
-      action["local_cp"].append((l[0],f))
+      action["local_cp"].append((l[0].rel_path,f.rel_path))
 
   # Last part: make all the moves/copies in temp files or separate dir
   # execute everything, the move then to final name
   # And finally handle the dirs (remove empty dirs on dst)
+  print(action)
+  if input('Proceed? (y/[n])').lower() != 'y':
+    raise KeyboardInterrupt
+
+  def my_rm(f):
+    d = os.path.join(TRASHDIR,os.path.basename(f))
+    i = 1
+    while os.path.exists(d):
+      name,ext = os.path.splitext(os.path.basename(f))
+      fname = name+"_{:03d}".format(i)+ext
+      d = os.path.join(TRASHDIR,fname)
+      i += 1
+    shutil.move(f,d)
+  os.makedirs(TRASHDIR,exist_ok=True)
+
+  for f in action['remote_cp']:
+    print("remote CP",f)
+    d = os.path.join(dst,f)
+    os.makedirs(os.path.dirname(d),exist_ok=True)
+    if temp_name(d) != d:
+      action['final_mv'].append((temp_name(d),d))
+    shutil.copy2(os.path.join(src,f),temp_name(d))
+
+  for f1,f2 in action['local_cp']:
+    print("local CP",f1,f2)
+    d = os.path.join(dst,f2)
+    os.makedirs(os.path.dirname(d),exist_ok=True)
+    if temp_name(d) != d:
+      action['final_mv'].append((temp_name(d),d))
+    shutil.copy2(os.path.join(dst,f1),temp_name(d))
+
+  for f1,f2 in action['mv']:
+    print("MV",f1,f2)
+    d = os.path.join(dst,f2)
+    os.makedirs(os.path.dirname(d),exist_ok=True)
+    if temp_name(d) != d:
+      action['final_mv'].append((temp_name(d),d))
+    shutil.move(os.path.join(dst,f1),temp_name(d))
+
+  for f in action['rm']:
+    print("RM",f)
+    #shutil.move(os.path.join(dst,f),TRASHDIR)
+    my_rm(os.path.join(dst,f))
+
+  for f1,f2 in action['final_mv']:
+    print("MV",f1,f2)
+    os.makedirs(os.path.dirname(os.path.join(dst,f2)),exist_ok=True)
+    shutil.move(os.path.join(dst,f1),os.path.join(dst,f2))
