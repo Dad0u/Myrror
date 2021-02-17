@@ -1,0 +1,83 @@
+a:0
+b:1
+---
+a:0
+====
+-> rm b
+
+
+a:0
+---
+b:0
+====
+-> mv b a
+
+
+a:0
+b:0
+----
+a:0
+====
+-> local_cp a b
+
+
+a:0
+b:1
+---
+a:0
+====
+-> remote_cp b
+
+Startégie:
+mv, local_cp, remote_cp, local_cp
+remote_cp, local_cp, mv
+PB:
+
+a:0
+b:1
+---
+a:1
+b:0
+=====
+mv a b # NON ! écrase b qui sert pour a
+
+Idée: toute action qui crée un fichier (local_cp, remote_cp et mv) ajoute une extension temporaire.
+Une fois toutes les actions effectuées, on renomme tous les fichiers pour retirer l'etension
+
+Rq: rm n'est pas safe:
+
+a:0
+b:1
+----
+a:1
+===
+mv b a
+ICI l'algo détectera qu'il faut effacer a -> Ne pas faire les suppressions à la fin!
+
+
+
+
+RECAP:
+
+Fichiers seulement sur dst: RM
+Slt sur src: remote_cp (avec extension)
+mv ce qu'il reste, local_cp si plus sur src, rm si plus sur dst
+Renommer tous les fichiers avec l'extension en leur nom définitif
+
+======================================
+
+10/02/2021
+Cette approche n'est pas viable: il faut pouvoir hasher sur l'hôte.
+Idée:
+Créer un ficher rapport sur l'hote de la source et sur l'hote de dest
+Les comparer et copier le nécessaire
+-> Il faut hasher TOUS les fichiers...
+
+Autre idée:
+On crée les deux rapports (sans checksum), on compare et on cherche les
+collisions. On envoie la liste des fichiers dont il faut calculer la checksum
+sur l'hôte distant.
+
+
+-> Trop d'opérations manuelles. Il faut que le programme puisse agir comme
+client et comme serveur...
