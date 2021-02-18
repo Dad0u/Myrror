@@ -7,7 +7,6 @@ class Location:
   Class meant to represent a local or remote folder
   """
   def __init__(self,s):
-    pass
     # TODO parse the string, detect if remote or local
     self.remote = False
 
@@ -30,6 +29,9 @@ def get_match(src,dst,comparison):
   # QUESTION: how to return the matches ?
   # List of tuples ?
   # What about "inner" matches (files with several instances on a side)
+  # A: A list of tuples of lists (oof)
+  # [([src1,src2,...],[dst1,...]),([],[]),...]
+
 
 
 def same(attr):
@@ -38,22 +40,26 @@ def same(attr):
   return f
 
 
+def mkloc(p):
+  loc = Location(p)
+  loc.discover_files()
+  print(f"Found {len(loc.flist)} files on {loc}")
+  return loc
+
+# size is implied
+default_check = [['name','path','size','mtime'],['qhash','parthash_10']]
+strict_check = [['qhash','sha256']]
+
 def sync_folders(src,dst):
   #src,dst = Location(src),Location(dst)
   #src.discover_files()
   #dst.discover_files()
-  def mkloc(p):
-    loc = Location(p)
-    loc.discover_files()
-    print(f"Found {len(loc.flist)} files on {loc}")
-    return loc
   with Pool(2) as p:
     src,dst = p.map(mkloc,[src,dst])
   # Those files are considered identical
-  m = get_match(src.flist,dst.flist,[same(i) for i in ['name','size','mtime']])
+  # For each sequence in a check, keep groups of files that fullfill all the checks
   # Maybe group ALL the files for local matches...
-  # Then, compute a qhash for all the remaining files of a size that exists on both sides
-  # And finally, a real hash (and store it)
+  # Store the partial and full hashes (and qhashes ? -> benchmark to see if useful or not)
 
 
 
