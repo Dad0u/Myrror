@@ -3,8 +3,6 @@ import hashlib
 import pickle
 
 
-PERCENT_HASH = 10
-
 def cachedfunc(savefile):
   """
   Decorator to save the results of a function
@@ -39,11 +37,24 @@ def lazyproperty(f):
   return wrapper
 
 
-def hash_file(fname,bs=1048576):
+def md5(fname,bs=1048576):
   """
-  Returns the hash of the file at the given location
+  Returns the MD5 checksum of the file at the given location
   """
   h = hashlib.md5()
+  with open(fname,'rb') as f:
+    chunk = f.read(bs)
+    while chunk:
+      h.update(chunk)
+      chunk = f.read(bs)
+    return h.digest()
+
+
+def sha256(fname,bs=1048576):
+  """
+  Returns the SHA256 checksum of the file at the given location
+  """
+  h = hashlib.sha256()
   with open(fname,'rb') as f:
     chunk = f.read(bs)
     while chunk:
@@ -61,7 +72,7 @@ def quick_hash_file(fname,bs=1024):
   """
   size = os.path.getsize(fname)
   if size <= 4*bs:
-    return hash_file(fname,bs)
+    return md5(fname,bs)
   h = hashlib.md5()
   with open(fname,'rb') as f:
     h.update(f.read(bs))
@@ -79,7 +90,7 @@ def partial_hash(f,percent=10,bs=1048576):
   assert 0 < percent < 100
   size = os.path.getsize(f)
   if size <= 3*bs:
-    return hash_file(f)
+    return md5(f)
   h = hashlib.md5()
   nblocks = max(1,int(percent/100*size/bs/3))
   with open(f,'rb') as f:
@@ -94,9 +105,14 @@ def partial_hash(f,percent=10,bs=1048576):
   return h.digest()
 
 
-@cachedfunc('hashes.p')
-def cached_hash_file(f,*args):
-  return hash_file(f)
+@cachedfunc('md5.p')
+def cached_md5(f,*args):
+  return md5(f)
+
+
+@cachedfunc('sha256.p')
+def cached_sha256(f,*args):
+  return md5(f)
 
 
 @cachedfunc('quick_hashes.p')
@@ -138,16 +154,19 @@ class File:
     return os.path.getmtime(self.fullpath)
 
   @lazyproperty
-  def hash(self):
-    return cached_hash_file(self.fullpath)
+  def md5(self):
+    return cached_md5(self.fullpath)
+
+  @lazyproperty
+  def sha256(self):
+    return cached_sha256(self.fullpath)
 
   @lazyproperty
   def qhash(self):
      return cached_quick_hash_file(self.fullpath)
 
-  @lazyproperty
-  def partial_hash(self):
-    return cached_partial_hash(self.fullpath,PERCENT_HASH)
+  def partial_hash(self,percent):
+    return cached_partial_hash(self.fullpath,percent)
 
   def path_relative_to(self,root):
     #return rm_prefix(self.fullpath,os.path.abspath(root)+'/')
@@ -155,3 +174,10 @@ class File:
 
   def __repr__(self):
     return f"File({self.rel_path})"
+
+  def __getattr__(self,v):
+    if v.startswith("parthash_"):
+      percent = int(v[9:])
+      assert 0 < percent < 100
+      return self.partial_hash(percent)
+    return getattr(self,v)
