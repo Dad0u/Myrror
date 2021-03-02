@@ -1,5 +1,22 @@
 from multiprocessing import Pool
-from file import File
+import os
+from file import Local_file, Remote_file
+
+
+def get_all_files(d):
+  """
+  Get all the files in the folder (recursively)
+  """
+  r = []
+  absd = os.path.abspath(d)
+  l = os.listdir(absd)
+  for f in l:
+    full = os.path.join(absd,f)
+    if os.path.isdir(full):
+      r += get_all_files(full)
+    else:
+      r.append(full)
+  return r
 
 
 class Location:
@@ -9,6 +26,7 @@ class Location:
   def __init__(self,s):
     # TODO parse the string, detect if remote or local
     self.remote = False
+    self.root = s
 
   def discover_files(self):
     """
@@ -19,24 +37,8 @@ class Location:
     else:
       self.discover_files_local()
 
-
-def get_match(src,dst,comparison):
-  """
-  Returns the files on src and dst that may be identical
-  """
-  if isinstance(comparison,list):
-    comparison = lambda a,b: all(c(a,b) for c in comparison)
-  # QUESTION: how to return the matches ?
-  # List of tuples ?
-  # What about "inner" matches (files with several instances on a side)
-  # A: A list of tuples of lists (oof)
-  # [([src1,src2,...],[dst1,...]),([],[]),...]
-
-
-def same(attr):
-  def f(a,b):
-    return getattr(a,attr) == getattr(b,attr)
-  return f
+  def discover_files_local(self):
+    self.flist = [Local_file(f,self.root) for f in get_all_files(self.root)]
 
 
 def mkloc(p):
@@ -47,7 +49,7 @@ def mkloc(p):
 
 
 # size is implied
-default_check = [['fullpath','size','mtime'],['qhash','parthash_10']]
+default_check = [['fullpath','mtime'],['qhash','parthash_10']]
 strict_check = [['qhash','sha256']]
 
 
@@ -82,24 +84,62 @@ def group(l,attr):
   return r
 
 
+def extract_unique(l):
+  """
+  Extract the files that are uniques and on only one side
+
+  Takes the same input as group and returns two of them
+  """
+  unique,non_unique = [],[]
+  for ls,ld in l:
+    if len(ls)+len(ld) == 1:
+      unique.append((ls,ld))
+    else:
+      non_unique.append((ls,ld))
+  return unique,non_unique
+
+
+def split(unique_l):
+  """
+  Takes the list of groups of unique files and flattens it into two lists
+
+  [([fa],[]),([],[fb])] -> [fa],[fb]
+  """
+  s,d = [],[]
+  for a,b in unique_l:
+    if a:
+      s.append(a[0])
+    else:
+      d.append(b[0])
+  return s,d
+
+
 def sync_folders(src,dst,check=default_check):
-  #src,dst = Location(src),Location(dst)
-  #src.discover_files()
-  #dst.discover_files()
+  #src = mkloc(src)
+  #dst = mkloc(dst)
   with Pool(2) as p:
     src,dst = p.map(mkloc,[src,dst])
-  # Those files are considered identical
   # For each sequence in a check, keep groups of files
   # that fullfill all the checks
-  # Maybe group ALL the files for local matches...
   # Store the partial and full hashes
   # (and qhashes ? -> benchmark to see if useful or not)
-  for group in check:
-    for attr in group:
-      pass
+  l = group([(src.flist,dst.flist)],'size')
+  matched = []
+  # If all the checks in a check group are verified, the files are considered
+  # identical
+  l = group([(src.flist,dst.flist)],'size')
+  for check_group in check:
+    unique,non_unique = extract_unique(l)
+    for attr in check_group:
+      l = group(non_unique,attr)
+      new_u,non_unique = extract_unique(l)
+      unique.extend(new_u)
+    matched.extend(non_unique)
+    l = group([split(unique)],'size')
+  return matched
 
 
 if __name__ == '__main__':
   import sys
   src,dst = sys.argv[1:]
-  sync_folders(src,dst)
+  r = sync_folders(src,dst)

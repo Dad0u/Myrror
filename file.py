@@ -134,7 +134,7 @@ def rm_prefix(s,prefix):
   return s
 
 
-class File:
+class Local_file:
   def __init__(self,path,root):
     self.fullpath = os.path.abspath(path)
     assert os.path.exists(path),path
@@ -180,4 +180,8 @@ class File:
       percent = int(v[9:])
       assert 0 < percent < 100
       return self.partial_hash(percent)
-    return getattr(self,v)
+    return object.__getattr__(self,v)
+
+
+class Remote_file:
+  pass
