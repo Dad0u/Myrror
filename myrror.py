@@ -49,7 +49,7 @@ def mkloc(p):
 
 
 # size is implied
-default_check = [['fullpath','mtime'],['qhash','parthash_10']]
+default_check = [['rel_path','mtime'],['qhash','parthash_10']]
 strict_check = [['qhash','sha256']]
 
 
@@ -114,11 +114,15 @@ def split(unique_l):
   return s,d
 
 
-def sync_folders(src,dst,check=default_check):
-  #src = mkloc(src)
-  #dst = mkloc(dst)
-  with Pool(2) as p:
-    src,dst = p.map(mkloc,[src,dst])
+def compare_folders(src,dst,check=default_check):
+  """
+  Takes two locations, compares them and returns the matches
+
+  Returns a list of tuples of 2 lists
+  Each tuple contains matched files
+  The first list of the tuple contains the files on src only and the second
+  the ones on dst only
+  """
   # For each sequence in a check, keep groups of files
   # that fullfill all the checks
   # Store the partial and full hashes
@@ -129,17 +133,48 @@ def sync_folders(src,dst,check=default_check):
   # identical
   l = group([(src.flist,dst.flist)],'size')
   for check_group in check:
+    print(f"Starting group {check_group}")
+    print(f"matched: {matched}")
     unique,non_unique = extract_unique(l)
+    print(f"unique: {unique}")
+    print(f"non unique: {non_unique}")
     for attr in check_group:
+      print(f"  Checking {attr}")
       l = group(non_unique,attr)
       new_u,non_unique = extract_unique(l)
+      print(f"new unique: {new_u}")
+      print(f"Non unique: {non_unique}")
       unique.extend(new_u)
     matched.extend(non_unique)
     l = group([split(unique)],'size')
-  return matched
+  #return matched,*split(unique)
+  return matched+unique
+
+
+def sync_folders(src,dst,check=default_check):
+  #src = mkloc(src)
+  #dst = mkloc(dst)
+  with Pool(2) as p:
+    src,dst = p.map(mkloc,[src,dst])
+  matches = compare_folders(src,dst)
+  src_only = []
+  dst_only = []
+  m = []
+  # This next loop will split the groups in 3:
+  # Files only on src, only on dst and on both sides
+  for a,b in matches:
+    if not b:
+      src_only.append(a)
+    elif not a:
+      dst_only.extend(b)
+    else:
+      m.append((a,b))
+  return m,src_only,dst_only
+  # Now m only contains matches that are on both sides !
+  return m,src_only,dst_only
 
 
 if __name__ == '__main__':
   import sys
   src,dst = sys.argv[1:]
-  r = sync_folders(src,dst)
+  m,us,ud = sync_folders(src,dst)
