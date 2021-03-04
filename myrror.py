@@ -151,17 +151,13 @@ def compare_folders(src,dst,check=default_check):
   return matched+unique
 
 
-def sync_folders(src,dst,check=default_check):
-  #src = mkloc(src)
-  #dst = mkloc(dst)
-  with Pool(2) as p:
-    src,dst = p.map(mkloc,[src,dst])
-  matches = compare_folders(src,dst)
+def get_actions(matches):
   src_only = []
   dst_only = []
   m = []
-  # This next loop will split the groups in 3:
+  # This loop will split the groups in 3:
   # Files only on src, only on dst and on both sides
+  # Note that src_only is a list of lists and dst_only simply a list
   for a,b in matches:
     if not b:
       src_only.append(a)
@@ -169,12 +165,72 @@ def sync_folders(src,dst,check=default_check):
       dst_only.extend(b)
     else:
       m.append((a,b))
-  return m,src_only,dst_only
   # Now m only contains matches that are on both sides !
-  return m,src_only,dst_only
+  #return m,src_only,dst_only
+  # Now let's get to the actions:
+  # eausy part: delete what is only on dst,
+  # remote copy one file of each group only on src
+  # Then, thigns get complicated...
+  action = {}
+  action['rm'] = [f.rel_path for f in dst_only]
+  action['mv'] = []
+  action['local_cp'] = []
+  action['remote_cp'] = []
+  action['final_mv'] = []
+
+  # Removing the groups that are strictly identical
+  new_m = []
+  for s,d in m:
+    if len(s) != len(d):
+      continue
+    if set([f.rel_path for f in s]) != set([f.rel_path for f in d]):
+      new_m.append((s,d))
+  m = new_m
+
+  # Now, removing matching pairs as long as they leave at least one in dst
+  # Why ? Beacause if we have ([a,b],[a]), doing ([b],[]) would trigger a
+  # unnecessary remote copy when we can do a local copy a->b
+  for s,d in m:
+    for i in list(s):
+      if i.rel_path in [f.rel_path for f in d] and len(d) > 1:
+        s.remove(i)
+        d.remove([f for f in d if f.rel_path == i.rel_path][0])
+
+  # ###################################### OLD CODE #######################
+  for f in dst_only:
+    action['rm'].append(f.rel_path)
+  for s,d in m:
+    for i,j in zip(s,d):
+      action['mv'].append((j.rel_path,i.rel_path))
+      #action['mv'].append((j.rel_path,temp_name(i.rel_path)))
+      #if temp_name(i.rel_path) != i.rel_path:
+      #  action['final_mv'].append((temp_name(i.rel_path),i.rel_path))
+    diff = len(s)-len(d)
+    if diff > 0:
+      for i in s[diff:]:
+        action['local_cp'].append((d[0].rel_path,temp_name(i.rel_path)))
+    elif diff < 0:
+      for i in d[diff:]:
+        action['rm'].append(i.rel_path)
+  for l in src_only:
+    action["remote_cp"].append(l[0].rel_path)
+    for f in l[1:]:
+      action["local_cp"].append((l[0].rel_path,f.rel_path))
+  ##########################################################################
+  return action
+
+
+def sync_folders(src,dst,check=default_check):
+  #src = mkloc(src)
+  #dst = mkloc(dst)
+  with Pool(2) as p:
+    src,dst = p.map(mkloc,[src,dst])
+  matches = compare_folders(src,dst)
+  action = get_actions(matches)
+  return action
 
 
 if __name__ == '__main__':
   import sys
   src,dst = sys.argv[1:]
-  m,us,ud = sync_folders(src,dst)
+  a = sync_folders(src,dst)
