@@ -152,6 +152,7 @@ def compare_folders(src,dst,check=default_check):
 
 
 def get_actions(matches):
+  print("get_actions is processing",matches)
   src_only = []
   dst_only = []
   m = []
@@ -165,6 +166,7 @@ def get_actions(matches):
       dst_only.extend(b)
     else:
       m.append((a,b))
+  print("m=",m)
   # Now m only contains matches that are on both sides !
   #return m,src_only,dst_only
   # Now let's get to the actions:
@@ -173,19 +175,22 @@ def get_actions(matches):
   # Then, thigns get complicated...
   action = {}
   action['rm'] = [f.rel_path for f in dst_only]
+  action['local_cp_pre'] = []
   action['mv'] = []
-  action['local_cp'] = []
   action['remote_cp'] = []
-  action['final_mv'] = []
+  action['local_cp_post'] = []
+
 
   # Removing the groups that are strictly identical
   new_m = []
   for s,d in m:
     if len(s) != len(d):
+      new_m.append((s,d))
       continue
     if set([f.rel_path for f in s]) != set([f.rel_path for f in d]):
       new_m.append((s,d))
   m = new_m
+  print("After removing identical groups, m=",m)
 
   # Now, removing matching pairs as long as they leave at least one in dst
   # Why ? Beacause if we have ([a,b],[a]), doing ([b],[]) would trigger a
@@ -195,10 +200,11 @@ def get_actions(matches):
       if i.rel_path in [f.rel_path for f in d] and len(d) > 1:
         s.remove(i)
         d.remove([f for f in d if f.rel_path == i.rel_path][0])
+  # Now, the list is as minimal as possible
+  # Let's get to creating the actions.
+  print("After removing unused pairs, m=",m)
 
   # ###################################### OLD CODE #######################
-  for f in dst_only:
-    action['rm'].append(f.rel_path)
   for s,d in m:
     for i,j in zip(s,d):
       action['mv'].append((j.rel_path,i.rel_path))
@@ -208,14 +214,14 @@ def get_actions(matches):
     diff = len(s)-len(d)
     if diff > 0:
       for i in s[diff:]:
-        action['local_cp'].append((d[0].rel_path,temp_name(i.rel_path)))
+        action['local_cp_pre'].append((d[0].rel_path,i.rel_path))
     elif diff < 0:
       for i in d[diff:]:
         action['rm'].append(i.rel_path)
   for l in src_only:
     action["remote_cp"].append(l[0].rel_path)
     for f in l[1:]:
-      action["local_cp"].append((l[0].rel_path,f.rel_path))
+      action["local_cp_post"].append((l[0].rel_path,f.rel_path))
   ##########################################################################
   return action
 
