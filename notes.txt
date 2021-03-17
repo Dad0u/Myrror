@@ -104,3 +104,29 @@ mv: [(A,B), (E,C), (B,A)]
 remote_cp: [D, H]
 local_cp_post:[(H,I)]
 
+=========================================
+
+17/03/2021
+
+Comment récupérer les infos sur les fichiers distants ?
+
+Script myrror-server.py:
+  Permet de détecter les fichiers sur la machine actuelle,
+  calculer les propriétés d'une liste de fichiers et générer un Pickle/json
+  pour répondre à des requêtes. DOIT garder une table
+  (nom, chemin, date) -> checksums pour permettre une réponse rapide
+  Ce code sera executé sur la cible via ssh depuis l'hôte. Il envoie
+  (via stdout?) les data serialisée nécessaires.
+  L'hôte recréera ou enrichiera alors en local les classes Remote_file
+
+
+Exemple :
+  python myrror-server.py get_files "/some/path"
+  ['f1','f2',...]
+
+  host$ scp flist remote:flist
+  remote$ python myrror-server.py get_qhash flist
+  {'f1':'123...','f2':'456...',...}
+
+Nécessaire de passer les noms de fichiers autrement que par la ligne de commande
+(limite en nb de char). Par ex scp un txt/pickle au préalable
