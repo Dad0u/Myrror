@@ -180,7 +180,7 @@ class Local_file:
       percent = int(v[9:])
       assert 0 < percent < 100
       return self.partial_hash(percent)
-    return object.__getattr__(self,v)
+    return object.__getattribute__(self,v)
 
 
 class Remote_file:
