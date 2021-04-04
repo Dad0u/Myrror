@@ -130,3 +130,25 @@ Exemple :
 
 Nécessaire de passer les noms de fichiers autrement que par la ligne de commande
 (limite en nb de char). Par ex scp un txt/pickle au préalable
+
+========================================
+
+04/04/2021
+
+Possibilité d'éxectuer un .py sur serveur distant sans le copier:
+ssh remote python3 < server.py - arg1 arg2
+ou cat server.py | ssh remote python3 -
+
+Par contre ne résoud pas la liste de fichers à traiter pour récupérer des
+attributs
+=> besoin de copier un fichier
+ex:
+
+with open('toupdate.txt','w') as f:
+  for name in flist:
+    f.write(name+'\n')
+subprocess.run(f'scp -C toupdate.txt {host}:{path}toupdate.txt')
+p = subprocess.run(f'ssh {host} python3 < server.py - get_qhash toupdate.txt')
+get_attrs(p.stdout)
+
+
