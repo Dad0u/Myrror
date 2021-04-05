@@ -96,6 +96,7 @@ properties = {
 
 if __name__ == '__main__':
   import sys
+  SAVE_DELAY = 60 # When reading properties, save them every X seconds
   assert len(sys.argv) == 3,"Invalid command"
   if sys.argv[1] == "list":
     root = sys.argv[2]
@@ -104,21 +105,52 @@ if __name__ == '__main__':
       print(f"#s>{os.path.getsize(fullpath)}")
       print(f"#t>{os.path.getmtime(fullpath)}")
   elif sys.argv[1].startswith('get_'):
+    import pickle
+    from time import time
     # Get the % of phash if necessary
     prop,*index = sys.argv[1][4:].split('_')
     assert len(index) in (0,1),"Unknown command: "+sys.argv[1]
     if index:
       index = int(index[0])
       assert 0 < index < 100
+    else:
+      index = None
     assert prop in properties,"Unknown arg: "+prop
     lfile = sys.argv[2]
+
+    long_prop = prop if not index else f'{prop}_{index}'
+    # Managing the saved properties: try to open the files
     with open(lfile,'r') as f:
-      flist = f.readlines()
+      root,*flist = [l[:-1] for l in f.readlines()]
+    try:
+      with open(os.path.join(root,f'.myrror-cached-{long_prop}.p'),'rb') as sf:
+        saved = pickle.load(sf)
+    except FileNotFoundError:
+      saved = {}
+
+    t0 = time()
+    # Main loop: checking if the attr exists, compute it if necessary
+    # save the file every SAVE_DELAY second and prints it
     for f in flist:
-      if prop == 'phash':
-        print(index)
-        print(f'#p>{properties[prop](f[:-1],index)}')
+      if f in saved:
+        oldsize,oldmtime,oldr = saved[f]
+        size,mtime = os.path.getsize(f),os.path.getmtime(f)
+        if (oldsize,oldmtime) == (size,mtime):
+          r = oldr
+        else:
+          r = properties[prop](f)
+          saved[f] = (size,mtime,r)
       else:
-        print(f'#p>{properties[prop](f[:-1])}')
+        r = properties[prop](f)
+        saved[f] = (os.path.getsize(f),os.path.getmtime(f),r)
+      t1 = time()
+      if t1 - t0 > SAVE_DELAY:
+        with open(os.path.join(root,
+          f'.myrror-cached-{long_prop}.p'),'w') as sf:
+          pickle.dump(saved,sf)
+        t0 = t1
+      print(f'#p>{r}')
+    with open(os.path.join(root, f'.myrror-cached-{long_prop}.p'),'wb') as sf:
+      pickle.dump(saved,sf)
   else:
     raise NameError("Unknown command: "+sys.argv[1])
