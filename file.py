@@ -9,7 +9,7 @@ def cachedfunc(savefile):
 
   Allows the result to be loaded instead of re-computed
   Only for funcs with hashable arguments !
-  Result mut be picklable
+  Result must be picklable
   """
   def deco(f):
     def newf(*args):
@@ -85,7 +85,7 @@ def quick_hash_file(fname,bs=1024):
 
 def partial_hash(f,percent=10,bs=1048576):
   """
-  Reads at list percent % of the file to make the hash
+  Reads at least percent % of the file to make the hash
   """
   assert 0 < percent < 100
   size = os.path.getsize(f)
