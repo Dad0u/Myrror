@@ -1,5 +1,4 @@
 import os
-from file import Local_file
 
 
 def get_all_files(d):
@@ -22,15 +21,10 @@ if __name__ == '__main__':
   import sys
   assert len(sys.argv) == 3,"Invalid command"
   if sys.argv[1] == "list":
-    for name in get_all_files(sys.argv[2]):
-      print(name)
-      f = Local_file(name,'.')
-      print(f.size)
-      print(f.mtime)
-  if sys.argv[1].startswith("get_"):
-    attr = sys.argv[1][4:]
-    flist = sys.argv[2]
-    r = []
-    for f in flist:
-      r.append(getattr(Local_file(f,'/'),attr))
-    print(r) # TODO
+    root = sys.argv[2]
+    for fullpath in get_all_files(root):
+      print(f"#n>{os.path.relpath(fullpath,root)}")
+      print(f"#s>{os.path.getsize(fullpath)}")
+      print(f"#t>{os.path.getmtime(fullpath)}")
+  else:
+    raise NameError("Unknown command: "+sys.argv[1])
