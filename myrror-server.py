@@ -10,6 +10,8 @@ def get_all_files(d):
   absd = os.path.abspath(d)
   l = os.listdir(absd)
   for f in l:
+    if f.startswith('.'):
+      continue
     full = os.path.join(absd,f)
     if os.path.isdir(full):
       r += get_all_files(full)
@@ -132,17 +134,18 @@ if __name__ == '__main__':
     # Main loop: checking if the attr exists, compute it if necessary
     # save the file every SAVE_DELAY second and prints it
     for f in flist:
+      af = os.path.join(root,f)
       if f in saved:
         oldsize,oldmtime,oldr = saved[f]
-        size,mtime = os.path.getsize(f),os.path.getmtime(f)
+        size,mtime = os.path.getsize(af),os.path.getmtime(af)
         if (oldsize,oldmtime) == (size,mtime):
           r = oldr
         else:
-          r = properties[prop](f)
+          r = properties[prop](af)
           saved[f] = (size,mtime,r)
       else:
-        r = properties[prop](f)
-        saved[f] = (os.path.getsize(f),os.path.getmtime(f),r)
+        r = properties[prop](af)
+        saved[f] = (os.path.getsize(af),os.path.getmtime(af),r)
       t1 = time()
       if t1 - t0 > SAVE_DELAY:
         with open(os.path.join(root,
