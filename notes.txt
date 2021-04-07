@@ -152,3 +152,24 @@ p = subprocess.run(f'ssh {host} python3 < server.py - get_qhash toupdate.txt')
 get_attrs(p.stdout)
 
 
+===========================================
+07/04/2021
+
+Time to put it all together!
+
+Prise de recul:
+Objectifs ?
+  Synchro local>dst, dst>local et local>local (éventuellement dst>dst)
+  ie. python3 myrror.py sync src/ remote:dst/
+  -> Will compare, guess actions sum them up and ask the user before doing it
+
+  list actions:
+  python3 myrror.py todo src/ remote:dst/
+  Will output a txt file with all the actions
+  (Can then extract all remote copies to perform a "3-way" sync)
+
+  Possibilité de choisir le check avec des arguments supplémentaires
+  python3 myrror.py sync src/ dst/ rel_path+mtime qhash+md5
+
+  Hashes calculées en mémoire locale (relative à la racine)
+    .myrror-xx
