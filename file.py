@@ -15,14 +15,14 @@ def cachedfunc(savefile):
     def newf(*args):
       args = tuple(args)
       try:
-        with open(savefile,'rb') as sf:
+        with open(savefile, 'rb') as sf:
           saved = pickle.load(sf)
       except FileNotFoundError:
         saved = {}
       if args not in saved:
         saved[args] = f(*args)
-        with open(savefile,'wb') as sf:
-          pickle.dump(saved,sf)
+        with open(savefile, 'wb') as sf:
+          pickle.dump(saved, sf)
       return saved[args]
     return newf
   return deco
@@ -30,19 +30,19 @@ def cachedfunc(savefile):
 
 def lazyproperty(f):
   @property
-  def wrapper(self,*args,**kwargs):
-    if not hasattr(self,'_'+f.__name__):
-      setattr(self,'_'+f.__name__,f(self,*args,**kwargs))
-    return getattr(self,'_'+f.__name__)
+  def wrapper(self, *args, **kwargs):
+    if not hasattr(self, '_' + f.__name__):
+      setattr(self, '_' + f.__name__, f(self, *args, **kwargs))
+    return getattr(self, '_' + f.__name__)
   return wrapper
 
 
-def md5(fname,bs=1048576):
+def md5(fname, bs=1048576):
   """
   Returns the MD5 checksum of the file at the given location
   """
   h = hashlib.md5()
-  with open(fname,'rb') as f:
+  with open(fname, 'rb') as f:
     chunk = f.read(bs)
     while chunk:
       h.update(chunk)
@@ -50,12 +50,12 @@ def md5(fname,bs=1048576):
     return h.digest()
 
 
-def sha256(fname,bs=1048576):
+def sha256(fname, bs=1048576):
   """
   Returns the SHA256 checksum of the file at the given location
   """
   h = hashlib.sha256()
-  with open(fname,'rb') as f:
+  with open(fname, 'rb') as f:
     chunk = f.read(bs)
     while chunk:
       h.update(chunk)
@@ -63,7 +63,7 @@ def sha256(fname,bs=1048576):
     return h.digest()
 
 
-def quick_hash_file(fname,bs=1024):
+def quick_hash_file(fname, bs=1024):
   """
   Returns a quicker hash of the file at the given location
 
@@ -71,61 +71,61 @@ def quick_hash_file(fname,bs=1024):
   Warning! Changing the bs will change the value of the hash
   """
   size = os.path.getsize(fname)
-  if size <= 4*bs:
-    return md5(fname,bs)
+  if size <= 4 * bs:
+    return md5(fname, bs)
   h = hashlib.md5()
-  with open(fname,'rb') as f:
+  with open(fname, 'rb') as f:
     h.update(f.read(bs))
-    f.seek(size//2,0)
+    f.seek(size // 2, 0)
     h.update(f.read(bs))
-    f.seek(-bs,2)
+    f.seek(-bs, 2)
     h.update(f.read(bs))
   return h.digest()
 
 
-def partial_hash(f,percent=10,bs=1048576):
+def partial_hash(f, percent=10, bs=1048576):
   """
   Reads at least percent % of the file to make the hash
   """
   assert 0 < percent < 100
   size = os.path.getsize(f)
-  if size <= 3*bs:
+  if size <= 3 * bs:
     return md5(f)
   h = hashlib.md5()
-  nblocks = max(1,int(percent/100*size/bs/3))
-  with open(f,'rb') as f:
-    for i in range(nblocks):
+  nblocks = max(1, int(percent / 100 * size / bs / 3))
+  with open(f, 'rb') as f:
+    for _ in range(nblocks):
       h.update(f.read(bs))
-    f.seek(int((size*(.5-percent/600))),0)
-    for i in range(nblocks):
+    f.seek(int((size * (.5 - percent / 600))), 0)
+    for _ in range(nblocks):
       h.update(f.read(bs))
-    f.seek(-bs*nblocks,2)
+    f.seek(-bs * nblocks, 2)
     for i in range(nblocks):
       h.update(f.read(bs))
   return h.digest()
 
 
 @cachedfunc('md5.p')
-def cached_md5(f,*args):
+def cached_md5(f, *args):
   return md5(f)
 
 
 @cachedfunc('sha256.p')
-def cached_sha256(f,*args):
+def cached_sha256(f, *args):
   return md5(f)
 
 
 @cachedfunc('quick_hashes.p')
-def cached_quick_hash_file(f,*args):
+def cached_quick_hash_file(f, *args):
   return quick_hash_file(f)
 
 
 @cachedfunc('partial_hashes.p')
-def cached_partial_hash(f,percent,*args):
-  return partial_hash(f,percent)
+def cached_partial_hash(f, percent, *args):
+  return partial_hash(f, percent)
 
 
-def rm_prefix(s,prefix):
+def rm_prefix(s, prefix):
   """
   str.removeprefix is only implemented since Python 3.9...
   """
@@ -135,10 +135,10 @@ def rm_prefix(s,prefix):
 
 
 class Local_file:
-  def __init__(self,path,root):
+  def __init__(self, path, root):
     self.fullpath = os.path.abspath(path)
-    assert os.path.exists(path),path
-    self.rel_path = self.path_relative_to(os.path.abspath(root)+'/')
+    assert os.path.exists(path), path
+    self.rel_path = self.path_relative_to(os.path.abspath(root) + '/')
     self.root = root
 
   @lazyproperty
@@ -165,22 +165,22 @@ class Local_file:
   def qhash(self):
      return cached_quick_hash_file(self.fullpath)
 
-  def partial_hash(self,percent):
-    return cached_partial_hash(self.fullpath,percent)
+  def partial_hash(self, percent):
+    return cached_partial_hash(self.fullpath, percent)
 
-  def path_relative_to(self,root):
-    #return rm_prefix(self.fullpath,os.path.abspath(root)+'/')
-    return rm_prefix(self.fullpath,root)
+  def path_relative_to(self, root):
+    # return rm_prefix(self.fullpath,os.path.abspath(root)+'/')
+    return rm_prefix(self.fullpath, root)
 
   def __repr__(self):
     return f"File({self.rel_path})"
 
-  def __getattr__(self,v):
+  def __getattr__(self, v):
     if v.startswith("parthash_"):
       percent = int(v[9:])
       assert 0 < percent < 100
       return self.partial_hash(percent)
-    return object.__getattribute__(self,v)
+    return object.__getattribute__(self, v)
 
 
 class Remote_file:
