@@ -1,6 +1,6 @@
 class Location:
   """
-  Represents a place either local or remote
+  Represents a directory either local or remote
 
   Takes a string to init
   A local Location is simply defined by the path (absolute or relative)

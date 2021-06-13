@@ -55,7 +55,7 @@ strict_check = [['qhash', 'sha256']]
 
 def group(l, attr):
   """
-  Refine a grouping using the given attribute
+  Refines a grouping using the given attribute
 
   Takes and returns a list of tuples of lists of files
   [([src1,src2],[dst1]),([src3],[]),([],[dst3])]
