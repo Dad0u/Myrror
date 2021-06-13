@@ -184,9 +184,22 @@ Actions élémentaires à effectuer:
     Sauvera tout ce qui a été calculé pour accélérer les synchros ultérieures
 
   - Définition des actions:
-    Prends la comparaison, définit une liste d'action à effectuer pour que les
+    Prend la comparaison, définit une liste d'action à effectuer pour que les
     deux destinations soient identiques.
     Donne un ensemble d'actions (remote_copy, move, etc...)
 
   - Actions:
     Prend la liste des actions et les applique
+
+============================================
+13/060/2021
+GROUPING METHOD
+
+File = dict
+Mandatory keys:
+  - path
+  - name
+  - size
+
+group:
+  list of lists of files
