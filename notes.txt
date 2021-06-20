@@ -203,3 +203,15 @@ Mandatory keys:
 
 group:
   list of lists of files
+
+
+=============================================
+20/06/2021
+How to perform the multi-criteria comparison:
+
+  Group based on the first criteria group
+  All the groups are saved
+  The next list of criteria is applied on the first elt of each group
+  The new groups are added to the groups (potentially joining groups together)
+  Repeat until all criteria are tested
+
