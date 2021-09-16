@@ -215,3 +215,63 @@ How to perform the multi-criteria comparison:
   The new groups are added to the groups (potentially joining groups together)
   Repeat until all criteria are tested
 
+============================================
+15/08/2021
+
+Reprise du projet après plusieurs mois:
+  Difficulté: comparaison complexe
+  Besoin de clarifier ce procédé.
+
+  Pour cela: recul nécessaire: il faut définir les fonctions du programme
+
+  src/dst are locations ( [[user@]host:]dir)
+
+  1/ myrror analyze src [--exclude/-e pattern]
+    -> Simply lists the files on src (name, size, mtime)
+    (with a header including the src)
+
+  2/ myrror compare [src | src.myr_flist] [dst | dst.myr_flist] (criteria)
+    Options: --exclude/-e : Patterns to exclude from both src and dst
+    -> Will compare src and dst. If it is a path, analyze it, else use the
+    flist
+    Then, the criteria will be used to construct a list of actions
+    (Contains the src and dst)
+
+  3/ myrror apply f.myr_actions
+    Apply the action list (src and dst are included in the file)
+
+  4/ myrror sync src dst
+    Analyze, compare and apply
+
+
+  What will be necessary:
+
+    remote.py
+      Wraps myrror_server.py (sends it, perform checks and is used by the host
+      to perform the remote actions)
+
+    myrror_server.py:
+      The file actually sent to the servers, must be able to take commands to:
+      A way to query info over ssh
+      A way to modify the destination over ssh (apply)
+
+    analyze.py
+      Perform the analysis of either local or remote dirs
+
+    compare.py
+      Takes the list of elements, compares and queries the necessary data
+      through analyze.py to perform the comparison
+      (may need an additional group.py for advanced grouping operations)
+
+    apply.py
+      Apply the list of actions (uses myrror_server.py)
+
+    cli.py
+      Provides a cli for all these commands using click
+
+  2ème point complexe: les commandes à distance. Besoin de clarifier ce point
+  aussi
+
+  Principe: on copie myrror_server.py et via remote.py on appelle le script
+  en envoyant les arguments. Inputs via un fichier .myrror-toupdate.txt
+  outputs via stdout

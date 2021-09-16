@@ -18,6 +18,14 @@ class File(dict):
     self['path'] = path
     self['size'] = size
 
+  @property
+  def pname(self):
+    """
+    Concatenation of path and name
+    Is expected to be unique
+    """
+    return self['path'] + self['name']
+
 
 def build_file_list(loc: Location) -> list:
   """

@@ -77,13 +77,13 @@ def partial_hash(f, percent=10, bs=1048576):
   h = hashlib.md5()
   nblocks = max(1, int(percent / 100 * size / bs / 3))
   with open(f, 'rb') as f:
-    for i in range(nblocks):
+    for _ in range(nblocks):
       h.update(f.read(bs))
     f.seek(int((size * (.5 - percent / 600))), 0)
-    for i in range(nblocks):
+    for _ in range(nblocks):
       h.update(f.read(bs))
     f.seek(-bs * nblocks, 2)
-    for i in range(nblocks):
+    for _ in range(nblocks):
       h.update(f.read(bs))
   return h.hexdigest()
 
