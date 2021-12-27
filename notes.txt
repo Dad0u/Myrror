@@ -275,3 +275,18 @@ Reprise du projet après plusieurs mois:
   Principe: on copie myrror_server.py et via remote.py on appelle le script
   en envoyant les arguments. Inputs via un fichier .myrror-toupdate.txt
   outputs via stdout
+
+
+
+================================================
+
+27/12/2021 - PHD over, more time to work on this project !
+
+Thinking about the temp files:
+  .myrror-cache.p: Local cache containing all the metadata already computed
+    (format to be determined)
+
+  diff.p: A list of the differences between the two targets
+    Contains the source, dest, list of the differences
+
+
