@@ -37,6 +37,16 @@ class Location:
   def remote(self):
     return self.host is not None
 
+  @property
+  def local(self):
+    return not self.remote
+
+  def __eq__(self, l2):
+    if self.local:
+      return l2.local and self.directory == l2.directory
+    return self.user, self.host, self.directory == \
+      l2.user, l2.host, l2.directory
+
 class File:
   """
   Represents a file
@@ -47,8 +57,9 @@ class File:
     self.loc = loc
     self.dir, self.name = os.path.split(path)
     self.path = path
+    self.attr = {}
 
   def __repr__(self):
     if self.loc.remote:
-      return f"Remote file on <{self.loc.host}>: #{self.loc.directory}#{self.path}"
-    return f"Local file: #{self.loc.directory}#{self.path}"
+      return f"Remote file on <{self.loc.host}>:{self.loc.directory}#{self.path}"
+    return f"Local file: {self.loc.directory}#{self.path}"
