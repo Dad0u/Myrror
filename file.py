@@ -31,21 +31,26 @@ class Location:
     else:
       user = host = None
       directory = location_str
+    while directory.endswith('/'):
+      directory = directory[:-1]
     return user, host, directory
 
   @property
-  def remote(self):
+  def is_remote(self):
     return self.host is not None
 
   @property
-  def local(self):
-    return not self.remote
+  def is_local(self):
+    return self.host is None
 
   def __eq__(self, l2):
-    if self.local:
+    if self.is_local:
       return l2.local and self.directory == l2.directory
     return self.user, self.host, self.directory == \
       l2.user, l2.host, l2.directory
+
+  def __hash__(self):
+    return hash((self.user, self.host, self.directory))
 
 class File:
   """
@@ -57,9 +62,9 @@ class File:
     self.loc = loc
     self.dir, self.name = os.path.split(path)
     self.path = path
-    self.attr = {}
 
   def __repr__(self):
-    if self.loc.remote:
-      return f"Remote file on <{self.loc.host}>:{self.loc.directory}#{self.path}"
+    if self.loc.is_remote:
+      return f"Remote file on <{self.loc.host}:{self.loc.directory}>"\
+             f" {self.path}"
     return f"Local file: {self.loc.directory}#{self.path}"
