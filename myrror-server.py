@@ -20,7 +20,7 @@ def get_all_files(d):
   return r
 
 
-def md5(fname, bs=1048576):
+def md5(fname, bs=1024 * 1024):
   """
   Returns the MD5 checksum of the file at the given location
   """
@@ -33,7 +33,7 @@ def md5(fname, bs=1048576):
     return h.hexdigest()
 
 
-def sha256(fname, bs=1048576):
+def sha256(fname, bs=1024 * 1024):
   """
   Returns the SHA256 checksum of the file at the given location
   """
@@ -66,7 +66,7 @@ def quick_hash_file(fname, bs=1024):
   return h.hexdigest()
 
 
-def partial_hash(f, percent=10, bs=1048576):
+def partial_hash(f, percent=10, bs=64 * 1024):
   """
   Reads at least percent % of the file to make the hash
   """
@@ -110,17 +110,19 @@ if __name__ == '__main__':
     import pickle
     from time import time
     # Get the % of phash if necessary
-    prop, *index = sys.argv[1][4:].split('_')
+    short_prop, *index = sys.argv[1][4:].split('_')
     assert len(index) in (0, 1), "Unknown command: " + sys.argv[1]
     if index:
       index = int(index[0])
       assert 0 < index < 100
     else:
       index = None
-    assert prop in properties, "Unknown arg: " + prop
+    assert short_prop in properties, "Unknown arg: " + short_prop
     lfile = sys.argv[2]
 
-    long_prop = prop if not index else f'{prop}_{index}'
+    # long_prop examples: qhash, phash_10
+    # Equivalent short props: qhash, phash
+    long_prop = short_prop if not index else f'{short_prop}_{index}'
     # Managing the saved properties: try to open the files
     with open(lfile, 'r') as f:
       root, *flist = [l[:-1] for l in f.readlines()]
@@ -136,23 +138,29 @@ if __name__ == '__main__':
     # save the file every SAVE_DELAY second and prints it
     for f in flist:
       af = os.path.join(root, f)
-      if f in saved:
+      if f in saved:  # The file is present in the cache
         oldsize, oldmtime, oldr = saved[f]
         size, mtime = os.path.getsize(af), os.path.getmtime(af)
-        if (oldsize, oldmtime) == (size, mtime):
-          r = oldr
+        if (oldsize, oldmtime) == (size, mtime):  # And up to date
+          r = oldr  # We can use the old value !
+        else:  # But the file was updated
+          if index is None:
+            r = properties[short_prop](af)  # So we recompute
+          else:
+            r = properties[short_prop](af, index)
+          saved[f] = (size, mtime, r)  # And we save
+      else:  # Not found in the cache
+        if index is None:
+          r = properties[short_prop](af)  # So we recompute
         else:
-          r = properties[prop](af)
-          saved[f] = (size, mtime, r)
-      else:
-        r = properties[prop](af)
+          r = properties[short_prop](af, index)
         saved[f] = (os.path.getsize(af), os.path.getmtime(af), r)
       t1 = time()
       if t1 - t0 > SAVE_DELAY:
         with open(os.path.join(root,
-                               f'.myrror-cached-{long_prop}.p'), 'w') as sf:
+                               f'.myrror-cached-{long_prop}.p'), 'wb') as sf:
           pickle.dump(saved, sf)
-        t0 = t1
+        t0 = time()  # Not t1 ! If the saving takes time, could be blocking
       print(f'#p>{r}')
     with open(os.path.join(root, f'.myrror-cached-{long_prop}.p'), 'wb') as sf:
       pickle.dump(saved, sf)
