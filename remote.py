@@ -43,7 +43,7 @@ def listf(location, exclude=tuple()):
 
   Returns a list of File objects
   """
-  assert loc.is_remote, "remote.listf cannot be used on local Locations"
+  assert location.is_remote, "remote.listf cannot be used on local Locations"
   p = subprocess.run(
       f'ssh {location.host} python3 < '
       f'myrror-server.py - list "{location.directory}"',
@@ -54,8 +54,8 @@ def listf(location, exclude=tuple()):
   r = [File(location, f['path']) for f in rd
        if not any(e in f for e in exclude)]
   for f, d in zip(r, rd):
-    f.size = d['size']
-    f.mtime = d['mtime']
+    f.size = int(d['size'])
+    f.mtime = int(d['mtime'])
   return r
 
 
