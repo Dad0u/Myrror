@@ -1,4 +1,6 @@
 from multiprocessing import Pool
+# from itertools import repeat
+# from threading import Thread
 
 from core import File, Location, listf, get
 
@@ -36,7 +38,44 @@ def refine(groups: list[list[File]], prop: str) -> list:
   return r
 
 
-def compare(src: Location, dst: Location, criteria: list[str]) -> dict:
+def extract_unique(groups: list[list]):
+  """
+  Takes a list of lists
+
+  All the empty lists are removed, the list containing one element are removed
+  and returned separately
+  Returns a tuple of two elements: the clean list and the single elements
+  Example:
+  [[1, 2], [3], [4], [5, 6, 7], [], [8]]
+  -> ([[1, 2], [5, 6, 7]], [3, 4, 8])
+  """
+  r, u = [], []
+  for g in groups:
+    if len(g) == 1:
+      u.extend(g)
+    elif len(g) > 1:
+      r.append(g)
+  return r, u
+
+
+def split_src_dst(groups: list[list]):
+  """
+  Takes a list of lists of Files, flattens and splits the Files in two groups:
+  the ones with the src attribute and the ones without
+  """
+  src, dst = [], []
+  for g in groups:
+    for f in g:
+      if hasattr(f, 'src'):
+        src.append(f)
+      else:
+        dst.append(f)
+  return src, dst
+
+
+def compare(src: Location,
+            dst: Location,
+            criteria: list[str]):
   """
   To compare two locations based on a list of criteria
 
@@ -56,7 +95,35 @@ def compare(src: Location, dst: Location, criteria: list[str]) -> dict:
     src_list, dst_list = p.map(listf, (src, dst))
   print("Ok.")
   for f in src_list:
-    f['location'] = 'src'
-  for f in dst_list:
-    f['location'] = 'dst'
+    f.src = True
+
   groups = refine([src_list + dst_list], 'size')
+  groups, uniques = extract_unique(groups)
+  for crit in criteria:
+    # Make sure they all have the crit computed
+
+    # Multiprocessing uses a copy of the File objects
+    # -> Not saving the computed attributes in our instances !
+    # with Pool(2) as p:
+    #   p.starmap(get, zip(repeat(crit), split_src_dst(groups)))
+
+    # Threaded version
+    # src, dst = split_src_dst(groups)
+    # src = [i for i in src if not hasattr(i, crit)]
+    # dst = [i for i in dst if not hasattr(i, crit)]
+    # tsrc = Thread(target=lambda: get(crit, src))
+    # tdst = Thread(target=lambda: get(crit, dst))
+    # tsrc.start()
+    # tdst.start()
+    # tsrc.join()
+    # tdst.join()
+
+    # Serialized version
+    src, dst = split_src_dst(groups)
+    get(crit, src)
+    get(crit, dst)
+
+    groups = refine(groups, crit)
+    groups, u = extract_unique(groups)
+    uniques.extend(u)
+  return groups, uniques
