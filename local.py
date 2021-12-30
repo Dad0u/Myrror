@@ -115,7 +115,7 @@ def listf(loc, exclude=tuple()):
       continue
     r.append(File(loc, os.path.relpath(fullpath, loc.directory)))
     r[-1].size = os.path.getsize(fullpath)
-    r[-1].mtime = os.path.getmtime(fullpath)
+    r[-1].mtime = int(os.path.getmtime(fullpath) * 1000)
   return r
 
 

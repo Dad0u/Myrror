@@ -105,7 +105,7 @@ if __name__ == '__main__':
     for fullpath in get_all_files(root):
       print(f"#n>{os.path.relpath(fullpath,root)}")
       print(f"#s>{os.path.getsize(fullpath)}")
-      print(f"#t>{os.path.getmtime(fullpath)}")
+      print(f"#t>{int(os.path.getmtime(fullpath) * 1000)}")
   elif sys.argv[1].startswith('get_'):
     import pickle
     from time import time
