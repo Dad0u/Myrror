@@ -27,7 +27,10 @@ def get(prop: str, flist: list[File]):
   if len(s) != 1:
     raise AttributeError("Can only call get() on a list of files "
           "from the same location")
-  if s.pop().is_local:
-    return local.get(prop, flist)
-  # else:
-  return remote.get(prop, flist)
+  # Only get the prop of the files that need it !
+  flist = [f for f in flist if not hasattr(f, prop)]
+  if flist:
+    if s.pop().is_local:
+      local.get(prop, flist)
+    else:
+      remote.get(prop, flist)
