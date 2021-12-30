@@ -52,7 +52,7 @@ def listf(location, exclude=tuple()):
   rd = str_to_files(p.stdout)
   # TODO: real handling of exclusion (idem in local.py)
   r = [File(location, f['path']) for f in rd
-       if not any(e in f for e in exclude)]
+       if not any(e in f['path'] for e in exclude)]
   for f, d in zip(r, rd):
     f.size = int(d['size'])
     f.mtime = int(d['mtime'])
