@@ -179,7 +179,6 @@ def get(prop, flist):
     setattr(f, prop, r)
   with open(os.path.join(root, f'.myrror-cached-{prop}.p'), 'wb') as sf:
     pickle.dump(saved, sf)
-  return flist
 
 
 if __name__ == '__main__':

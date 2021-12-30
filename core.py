@@ -18,6 +18,8 @@ def listf(loc: Location, exclude=tuple()):
 def get(prop: str, flist: list[File]):
   """
   Get a property in a list of files
+
+  Does not return anything ! The files are updated in place
   """
   s = set()
   for f in flist:
