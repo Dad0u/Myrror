@@ -108,9 +108,15 @@ def listf(loc, exclude=tuple()):
   Returns a list of File objects
   """
   assert loc.is_local, "local.listf cannot be used on remote Locations"
-  l = get_all_files(loc.directory)
-  # TODO: real handling of exclusion (idem in remote.py)
-  return [File(loc, i) for i in l if i not in exclude]
+  r = []
+  for fullpath in get_all_files(loc.directory):
+    # TODO: real handling of exclusion (idem in remote.py)
+    if any(e in fullpath for e in exclude):
+      continue
+    r.append(File(loc, os.path.relpath(fullpath, loc.directory)))
+    r[-1].size = os.path.getsize(fullpath)
+    r[-1].mtime = os.path.getmtime(fullpath)
+  return r
 
 
 def get(prop, flist):
