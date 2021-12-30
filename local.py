@@ -154,8 +154,8 @@ def get(prop: str, flist: list[File]):
       print("Warning: Asking {prop} for {f} but it was already set!")
       continue
     af = os.path.join(root, f.path)
-    if f in saved:  # The file is present in the cache
-      oldsize, oldmtime, oldr = saved[f]
+    if f.path in saved:  # The file is present in the cache
+      oldsize, oldmtime, oldr = saved[f.path]
       if (oldsize, oldmtime) == (f.size, f.mtime):  # And up to date
         r = oldr  # We can use the old value !
       else:  # But the file was updated
@@ -163,13 +163,13 @@ def get(prop: str, flist: list[File]):
           r = properties[short_prop](af)  # So we recompute
         else:
           r = properties[short_prop](af, index)
-        saved[f] = (f.size, f.mtime, r)  # And we save
+        saved[f.path] = (f.size, f.mtime, r)  # And we save
     else:  # Not found in the cache
       if index is None:
         r = properties[short_prop](af)  # So we recompute
       else:
         r = properties[short_prop](af, index)
-      saved[f] = (os.path.getsize(af), os.path.getmtime(af), r)
+      saved[f.path] = (os.path.getsize(af), os.path.getmtime(af), r)
     t1 = time()
     if t1 - t0 > SAVE_DELAY:
       with open(os.path.join(root,
