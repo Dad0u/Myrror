@@ -45,9 +45,9 @@ class Location:
 
   def __eq__(self, l2):
     if self.is_local:
-      return l2.local and self.directory == l2.directory
+      return l2.is_local and self.directory == l2.directory
     return self.user, self.host, self.directory == \
-      l2.user, l2.host, l2.directory
+        l2.user, l2.host, l2.directory
 
   def __hash__(self):
     return hash((self.user, self.host, self.directory))
