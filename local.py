@@ -119,7 +119,7 @@ def listf(loc, exclude=tuple()):
   return r
 
 
-def get(prop, flist):
+def get(prop: str, flist: list[File]):
   """
   Compute (or get from the cache) the prop of all these local Files
   """

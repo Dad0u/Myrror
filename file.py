@@ -52,6 +52,7 @@ class Location:
   def __hash__(self):
     return hash((self.user, self.host, self.directory))
 
+
 class File:
   """
   Represents a file
