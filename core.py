@@ -24,6 +24,8 @@ def get(prop: str, flist: list[File]):
   s = set()
   for f in flist:
     s.add(f.loc)
+  if not s:
+    return
   if len(s) != 1:
     raise AttributeError("Can only call get() on a list of files "
           "from the same location")
