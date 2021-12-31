@@ -73,6 +73,49 @@ def split_src_dst(groups: list[list]):
   return src, dst
 
 
+def apply_criteria(groups: list[list[File]], criteria):
+  """
+  Takes a list of potential groups and refine them using the given criteria
+
+  Returns a list of matching groups and a list of unique elements
+  """
+  uniques = []
+  for crit in criteria:
+    print(f"Computing {crit}...", end='', flush=True)
+    # Make sure they all have the crit computed
+
+    # Multiprocessing uses a copy of the File objects
+    # -> Not saving the computed attributes in our instances !
+    # with Pool(2) as p:
+    #   p.starmap(get, zip(repeat(crit), split_src_dst(groups)))
+
+    # Threaded version
+    src, dst = split_src_dst(groups)
+    src = [i for i in src if not hasattr(i, crit)]
+    dst = [i for i in dst if not hasattr(i, crit)]
+    tsrc = Thread(target=lambda: get(crit, src))
+    tdst = Thread(target=lambda: get(crit, dst))
+    tsrc.start()
+    tdst.start()
+    tsrc.join()
+    tdst.join()
+
+    # Serialized version
+    # src, dst = split_src_dst(groups)
+    # get(crit, src)
+    # get(crit, dst)
+
+    print("Ok.")
+
+    print(f"Refining by {crit}...", end='', flush=True)
+    groups = refine(groups, crit)
+    groups, u = extract_unique(groups)
+    uniques.extend(u)
+    print("Ok.")
+    print(f"{sum([len(i) for i in groups])} elements in {len(groups)} groups")
+  return groups, uniques
+
+
 def compare(src: Location,
             dst: Location,
             criteria: list[str]):
@@ -80,7 +123,8 @@ def compare(src: Location,
   To compare two locations based on a list of criteria
 
   Takes two locations and a list of criteria to match the files
-  Returns a list of list of Files. Each list is a matching group
+  Only supports a single list of criteria, they will all be tested in order
+  The files in a group match on all the specified criteria
   """
   assert src != dst, "Trying to compare the same location!"
   print("Enumerating files...", end='', flush=True)
@@ -95,37 +139,57 @@ def compare(src: Location,
   groups, uniques = extract_unique(groups)
   print("Ok.")
   print(f"{sum([len(i) for i in groups])} elements in {len(groups)} groups")
-  for crit in criteria:
-    print(f"Computing {crit}...", end='', flush=True)
-    # Make sure they all have the crit computed
-
-    # Multiprocessing uses a copy of the File objects
-    # -> Not saving the computed attributes in our instances !
-    # with Pool(2) as p:
-    #   p.starmap(get, zip(repeat(crit), split_src_dst(groups)))
-
-    # Threaded version
-    # src, dst = split_src_dst(groups)
-    # src = [i for i in src if not hasattr(i, crit)]
-    # dst = [i for i in dst if not hasattr(i, crit)]
-    # tsrc = Thread(target=lambda: get(crit, src))
-    # tdst = Thread(target=lambda: get(crit, dst))
-    # tsrc.start()
-    # tdst.start()
-    # tsrc.join()
-    # tdst.join()
-
-    # Serialized version
-    src, dst = split_src_dst(groups)
-    get(crit, src)
-    get(crit, dst)
-
-    print("Ok.")
-
-    print(f"Refining by {crit}...", end='', flush=True)
-    groups = refine(groups, crit)
-    groups, u = extract_unique(groups)
-    uniques.extend(u)
-    print("Ok.")
-    print(f"{sum([len(i) for i in groups])} elements in {len(groups)} groups")
+  groups, new_uniques = apply_criteria(groups, criteria)
+  uniques.extend(new_uniques)
   return groups, uniques
+
+
+def is_on_both_locations(group: list[File]):
+  """
+  Check if the group contains Files on two different locations
+
+  Returns True if two different locations are found
+  False if there is only one
+  Raises an error if there is more than two or the list is empty
+  """
+  s = set(f.loc for f in group)
+  if len(s) not in [1, 2]:
+    raise RuntimeError(f"is_on_both_locations got a group with {len(s)} "
+                       " different locations !")
+  return len(s) == 2
+
+
+def multi_compare(src: Location, dst: Location,
+                  criteria_lists: list[list[str]]):
+  """
+  To compare two locations based on a list of lists of criteria
+
+  Takes two locations and a list of criteria to match the files
+  Two files are considered matching if they match all the criteria of any list
+  """
+  assert src != dst, "Trying to compare the same location!"
+  print("Enumerating files...", end='', flush=True)
+  with Pool(2) as p:
+    src_list, dst_list = p.map(listf, (src, dst))
+  print("Ok.")
+  for f in src_list:
+    f.src = True
+
+  print("Refining by size...", end='', flush=True)
+  groups = refine([src_list + dst_list], 'size')
+  unmatched, unique_size = extract_unique(groups)
+  matched = []
+  print("Ok.")
+  print(f"{sum([len(i) for i in groups])} elements in {len(groups)} groups")
+  for criteria in criteria_lists:
+    print("Working on the list of criteria:", criteria)
+    groups, unmatched = apply_criteria(unmatched, criteria)
+    for g in groups:
+      if is_on_both_locations(g):
+        matched.append(g)
+      else:
+        unmatched.extend(g)
+    if not unmatched:
+      return matched, unique_size + unmatched
+    unmatched = [unmatched]
+  return matched, unique_size + unmatched[0]
