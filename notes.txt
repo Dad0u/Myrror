@@ -290,3 +290,27 @@ Thinking about the temp files:
     Contains the source, dest, list of the differences
 
 
+31/12/2021 - Things are going well
+
+Got the local and remote detection working, stub of the compare program
+
+Need to work on the multi criteria comparison
+
+Example:
+- ['path', 'mtime'] (size is implied)
+- OR ['name', 'qhash']
+- OR ['sha256']
+
+First comparison:
+groups = [...]
+uniques = [...]
+
+We need to split groups in TWO lists:
+matched, with files on both side
+and unmatched with files on only one side
+
+EACH FILE MUST APPEAR EXACTLY ONCE IN matched+unmatched+[uniques]
+
+Then, we perform the second pass on all the files that are not in matched
+
+etc... until all files end in match or all the criteria were tested
