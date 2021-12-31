@@ -1,6 +1,6 @@
 from multiprocessing import Pool
 # from itertools import repeat
-# from threading import Thread
+from threading import Thread
 
 from core import File, Location, listf, get
 
@@ -81,13 +81,6 @@ def compare(src: Location,
 
   Takes two locations and a list of criteria to match the files
   Returns a list of list of Files. Each list is a matching group
-  Each file has a 'location' key either set to 'src' or 'dst'
-  The list of criteria can be a list of keys or a list of lists of keys
-  In the first case, all the keys must match, in the second, all the keys of
-  at least one list must match. It can be used to accelerate comparison in the
-  where a set of attribute is less likely to match easier to compute and still
-  reliable (example: in some cases, name, path and mtime matching is enough to
-  exclude a content comparison)
   """
   assert src != dst, "Trying to compare the same location!"
   print("Enumerating files...", end='', flush=True)
@@ -97,9 +90,13 @@ def compare(src: Location,
   for f in src_list:
     f.src = True
 
+  print("Refining by size...", end='', flush=True)
   groups = refine([src_list + dst_list], 'size')
   groups, uniques = extract_unique(groups)
+  print("Ok.")
+  print(f"{sum([len(i) for i in groups])} elements in {len(groups)} groups")
   for crit in criteria:
+    print(f"Computing {crit}...", end='', flush=True)
     # Make sure they all have the crit computed
 
     # Multiprocessing uses a copy of the File objects
@@ -123,7 +120,12 @@ def compare(src: Location,
     get(crit, src)
     get(crit, dst)
 
+    print("Ok.")
+
+    print(f"Refining by {crit}...", end='', flush=True)
     groups = refine(groups, crit)
     groups, u = extract_unique(groups)
     uniques.extend(u)
+    print("Ok.")
+    print(f"{sum([len(i) for i in groups])} elements in {len(groups)} groups")
   return groups, uniques

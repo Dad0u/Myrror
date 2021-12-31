@@ -73,7 +73,7 @@ def get(prop, flist):
       fi.write(f.path + "\n")
   subprocess.run(
       f'scp -C {TMP} {loc.host}:{loc.directory}/.myrror-toupdate.txt',
-      shell=True, check=True)
+      shell=True, check=True, stdout=subprocess.DEVNULL, stderr=None)
   os.remove(TMP)
   p = subprocess.run(f'ssh {loc.host} python3 < myrror-server.py - '
                      f'get_{prop} "{loc.directory}/.myrror-toupdate.txt"',
