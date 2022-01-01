@@ -5,7 +5,7 @@ from threading import Thread
 from core import File, Location, listf, get
 
 
-def refine(groups: list[list[File]], prop: str) -> list:
+def refine(groups: list[list[File]], prop: str) -> list[list[File]]:
   """
   Takes a list of groups of files
 
@@ -73,7 +73,8 @@ def split_src_dst(groups: list[list]):
   return src, dst
 
 
-def apply_criteria(groups: list[list[File]], criteria):
+def apply_criteria(groups: list[list[File]], criteria) -> (
+        list[list[File]], list[File]):
   """
   Takes a list of potential groups and refine them using the given criteria
 
@@ -134,17 +135,11 @@ def compare(src: Location,
   for f in src_list:
     f.src = True
 
-  print("Refining by size...", end='', flush=True)
-  groups = refine([src_list + dst_list], 'size')
-  groups, uniques = extract_unique(groups)
-  print("Ok.")
-  print(f"{sum([len(i) for i in groups])} elements in {len(groups)} groups")
-  groups, new_uniques = apply_criteria(groups, criteria)
-  uniques.extend(new_uniques)
+  groups, uniques = apply_criteria([src_list + dst_list], criteria)
   return groups, uniques
 
 
-def is_on_both_locations(group: list[File]):
+def is_on_both_locations(group: list[File]) -> bool:
   """
   Check if the group contains Files on two different locations
 
@@ -177,12 +172,9 @@ def multi_compare(src: Location, dst: Location,
   print("Ok.")
   for f in src_list:
     f.src = True
-  print("Refining by size...", end='', flush=True)
-  groups = refine([src_list + dst_list], 'size')
-  unmatched, unique_size = extract_unique(groups)
+
+  unmatched = [src_list + dst_list]
   matched = []
-  print("Ok.")
-  print(f"{sum([len(i) for i in groups])} elements in {len(groups)} groups")
   for criteria in criteria_lists:
     print("Working on the list of criteria:", criteria)
     groups, unmatched = apply_criteria(unmatched, criteria)
@@ -192,6 +184,8 @@ def multi_compare(src: Location, dst: Location,
       else:
         unmatched.extend(g)
     if not unmatched:
-      return matched, unique_size + unmatched
+      return matched, unmatched
+
     unmatched = [unmatched]
-  return matched, unique_size + unmatched[0]
+  return matched, unmatched[0]
+
