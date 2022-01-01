@@ -69,3 +69,9 @@ class File:
       return f"Remote file on <{self.loc.host}:{self.loc.directory}>"\
              f" {self.path}"
     return f"Local file: {self.loc.directory}#{self.path}"
+
+  def __eq__(self, f2):
+    return (self.loc, self.path) == (f2.loc, f2.path)
+
+  def __hash__(self):
+    return hash((self.loc, self.path))
