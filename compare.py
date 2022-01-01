@@ -189,3 +189,24 @@ def multi_compare(src: Location, dst: Location,
     unmatched = [unmatched]
   return matched, unmatched[0]
 
+
+def compute_actions(src: Location, dst: Location, groups: list[list[File]]):
+  """
+  Takes src, dst and a list of groups of matching files (as built by compare())
+  and returns the actions to be performed to make dst identical to src
+  """
+  src_only, dst_only, both = [], [], []
+  for g in groups:
+    s = set(f.loc for f in g)
+    if not s:
+      continue
+    if len(s) == 1:
+      if s.pop() == src:
+        src_only.extend(g)
+      elif s.pop() == dst:
+        dst_only.extend(g)
+      else:
+        raise AttributeError(
+            "Got a file from neither src nor dst in compute_actions")
+    else:
+      both.append(g)
