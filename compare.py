@@ -166,6 +166,9 @@ def multi_compare(src: Location, dst: Location,
 
   Takes two locations and a list of criteria to match the files
   Two files are considered matching if they match all the criteria of any list
+
+  TODO: find a way to re-include the already matched files from source
+  (see notes 01/01/2022)
   """
   assert src != dst, "Trying to compare the same location!"
   print("Enumerating files...", end='', flush=True)
@@ -174,7 +177,6 @@ def multi_compare(src: Location, dst: Location,
   print("Ok.")
   for f in src_list:
     f.src = True
-
   print("Refining by size...", end='', flush=True)
   groups = refine([src_list + dst_list], 'size')
   unmatched, unique_size = extract_unique(groups)

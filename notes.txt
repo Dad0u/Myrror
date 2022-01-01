@@ -314,3 +314,18 @@ EACH FILE MUST APPEAR EXACTLY ONCE IN matched+unmatched+[uniques]
 Then, we perform the second pass on all the files that are not in matched
 
 etc... until all files end in match or all the criteria were tested
+
+01/01/2022 - Comparison is hard...
+
+This idea is great (it was implemented in multi_compare)
+but has one major limitation:
+    If two files are matched based on a first list of criteria,
+    they are removed from the matching pool!
+    Example: A and B match based on crit1, B and C match based on crit2
+    C will be unmatched as it will not be compared with neither A or B
+    (OK if there are no duplicates on src)
+
+FIX: keep a file from src from each matched group in the unmatched pool
+BUT, this breaks the unicity rule. How to deal with it ?
+idea: add "ghost" files that will later be removed and merged to the group
+containing the real file. They can be copies with a special attribute
