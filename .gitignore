@@ -1,3 +1,4 @@
 .*.swp
+.idea
 hashes.p
 __pycache__
